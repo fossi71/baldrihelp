@@ -2,8 +2,8 @@
 set -e
 
 # --- KONFIGURATION ---
-# Traefik-Bypass URL & Echter Key
-CMS_URL="${CMS_URL:-https://baldricore.baldri.com/index.php?ajax=1&action=ingest}"
+# Korrekte Direct-URL zum PHP-Service & Echter Key
+CMS_URL="${CMS_URL:-https://baldricore.baldri.com/plugins/services/server_audit_service.php}"
 API_KEY="${API_KEY:-DEIN_GEHEIMER_API_KEY_HIER}"
 # ----------------------
 
@@ -86,7 +86,7 @@ echo "[5/5] Erzeuge Audit-Log-Shipper (Cronjob)..."
 cat << 'EOF' > "$TARGET_AUDIT_BIN"
 #!/bin/bash
 
-LOGS=$(ausearch -ts recent -k sys_config -k sys_keys -k web_change -k honeypot_trigger 2>/dev/null | ausearch-probes 2>/dev/null || true)
+LOGS=$(ausearch -ts recent -k sys_config -k sys_keys -k web_change -k honeypot_trigger 2>/dev/null || true)
 
 if [ -n "$LOGS" ]; then
     PAYLOAD=$(jq -n \

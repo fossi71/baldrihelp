@@ -2,7 +2,6 @@
 set -e
 
 # --- KONFIGURATION ---
-# Korrekte Direct-URL zum PHP-Service & Echter Key
 CMS_URL="${CMS_URL:-https://baldricore.baldri.com/plugins/services/server_audit_service.php}"
 API_KEY="${API_KEY:-DEIN_GEHEIMER_API_KEY_HIER}"
 # ----------------------
@@ -28,6 +27,7 @@ apt-get install -y -qq auditd jq curl > /dev/null
 echo "[2/5] Erzeuge PAM Login-Shipper..."
 cat << 'EOF' > "$TARGET_PAM_BIN"
 #!/bin/bash
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 if [ "$PAM_TYPE" = "open_session" ]; then
     USER_NAME="$PAM_USER"
@@ -85,8 +85,19 @@ augen-load > /dev/null 2>&1 || auditctl -R /etc/audit/rules.d/cms-honeypot.rules
 echo "[5/5] Erzeuge Audit-Log-Shipper (Cronjob)..."
 cat << 'EOF' > "$TARGET_AUDIT_BIN"
 #!/bin/bash
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export LC_ALL=C
 
-LOGS=$(ausearch -ts recent -k sys_config -k sys_keys -k web_change -k honeypot_trigger 2>/dev/null || true)
+START_TIME=$(date -d "2 minutes ago" "+%H:%M:%S")
+LOGS=""
+
+# Keys einzeln abfragen, da ausearch mehrere -k per UND verknüpft
+for key in sys_config sys_keys web_change honeypot_trigger; do
+    RESULT=$(ausearch -ts "$START_TIME" -k "$key" 2>/dev/null || true)
+    if [ -n "$RESULT" ]; then
+        LOGS="${LOGS}${RESULT}"$'\n'
+    fi
+done
 
 if [ -n "$LOGS" ]; then
     PAYLOAD=$(jq -n \
